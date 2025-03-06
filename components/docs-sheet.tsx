@@ -22,7 +22,7 @@ function parseCodeSections(code: string): CodeSection[] {
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
 
-        if (line.startsWith('#region ')) {
+        if (line.startsWith('# region')) {
             currentSection = {
                 title: line.substring(8),
                 description: '',
@@ -50,7 +50,7 @@ function parseCodeSections(code: string): CodeSection[] {
             continue;
         }
 
-        if (line === '#endregion' && currentSection) {
+        if (line === '# endregion' && currentSection) {
             sections.push(currentSection);
             currentSection = null;
             continue;
