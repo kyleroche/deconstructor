@@ -54,16 +54,6 @@ class WordOutput(BaseModel):
 
 # endregion
 
-# region Environment Setup
-"""
-Functions for configuring the runtime environment
-Handles cloud vs local execution and API key management
-If this is running in Griptape Cloud, we will publish events to the event bus
-"""
-
-
-# endregion
-
 # region Agent Configuration
 """
 Creating and configuring the linguistic analysis agent.
@@ -128,9 +118,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # region Environment Setup
     with GriptapeCloudStructure(observe=True):
         agent = create_word_agent()
 
+        # endregion
         try:
             result = deconstruct_word(agent, args.word)
             if args.verbose:
