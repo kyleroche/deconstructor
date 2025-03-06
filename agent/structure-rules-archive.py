@@ -2,7 +2,7 @@ import argparse
 import os
 import json
 
-#region Imports
+# region Imports
 """
 External dependencies and type definitions
 Core libraries for CLI, environment, and data handling
@@ -17,15 +17,19 @@ from griptape.structures import Agent
 from griptape.rules import Rule
 from griptape.drivers import GriptapeCloudEventListenerDriver
 from griptape.events import EventBus, EventListener
-#endregion
+# endregion
 
-#region Data Model
+# region Data Model
 """
 Pydantic models defining the structure for word parts and combinations
 Used for type validation and JSON schema generation
 """
+
+
 class WordPart(BaseModel):
-    id: str = Field(description="Lowercase identifier, unique across parts and combinations")
+    id: str = Field(
+        description="Lowercase identifier, unique across parts and combinations"
+    )
     text: str = Field(description="Exact section of input word")
     originalWord: str = Field(description="Oldest word/affix this part comes from")
     origin: str = Field(description="Brief origin (Latin, Greek, etc)")
@@ -40,17 +44,27 @@ class Combination(BaseModel):
 
 
 class WordOutput(BaseModel):
-    thought: str = Field(description="Think about the word/phrase, it's origins, and how it's put together")
-    parts: List[WordPart] = Field(description="Array of word parts that combine to form the word")
-    combinations: List[List[Combination]] = Field(description="Layers of combinations forming a DAG to the final word")
-#endregion
+    thought: str = Field(
+        description="Think about the word/phrase, it's origins, and how it's put together"
+    )
+    parts: List[WordPart] = Field(
+        description="Array of word parts that combine to form the word"
+    )
+    combinations: List[List[Combination]] = Field(
+        description="Layers of combinations forming a DAG to the final word"
+    )
 
-#region Environment Setup
+
+# endregion
+
+# region Environment Setup
 """
 Functions for configuring the runtime environment
 Handles cloud vs local execution and API key management
 If this is running in Griptape Cloud, we will publish events to the event bus
 """
+
+
 def is_running_in_managed_environment() -> bool:
     return "GT_CLOUD_STRUCTURE_RUN_ID" in os.environ
 
@@ -67,25 +81,35 @@ def setup_config():
         event_driver = GriptapeCloudEventListenerDriver(api_key=get_listener_api_key())
         EventBus.add_event_listener(EventListener(event_listener_driver=event_driver))
     else:
-        load_dotenv('../.env.local')
-#endregion
+        load_dotenv("../.env.local")
 
-#region Agent Configuration
+
+# endregion
+
+# region Agent Configuration
 """
 Functions for creating and configuring the linguistic analysis agent
 Defines rules and behavior for word deconstruction
 """
+
+
 def create_word_agent() -> Agent:
     return Agent(
         rules=[
-            Rule("You are a linguistic expert that deconstructs words into their meaningful parts and explains their etymology."),
-            Rule("You must ONLY analyze the exact input word provided, never substitute it with a different word."),
-            Rule("Create multiple layers of combinations to form the final meaning of the word."),
+            Rule(
+                "You are a linguistic expert that deconstructs words into their meaningful parts and explains their etymology."
+            ),
+            Rule(
+                "You must ONLY analyze the exact input word provided, never substitute it with a different word."
+            ),
+            Rule(
+                "Create multiple layers of combinations to form the final meaning of the word."
+            ),
             Rule("The final combination must be the complete input word."),
             Rule("All IDs must be unique across both parts and combinations."),
             Rule("The parts must combine exactly to form the input word."),
             Rule("Respond with a JSON object that matches this schema exactly:"),
-            Rule(json.dumps(WordOutput.model_json_schema(), indent=2))
+            Rule(json.dumps(WordOutput.model_json_schema(), indent=2)),
         ]
     )
 
@@ -104,7 +128,9 @@ Break down '{word}' into its etymological components."""
         return WordOutput.model_validate_json(response_text)
     except Exception as e:
         raise ValueError(f"Failed to parse agent response as JSON: {e}")
-#endregion
+
+
+# endregion
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -122,10 +148,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    
+
     setup_config()
     agent = create_word_agent()
-    
+
     try:
         result = deconstruct_word(agent, args.word)
         if args.verbose:
@@ -136,4 +162,4 @@ if __name__ == "__main__":
             print(f"Parts: {parts}")
             print(f"Definition: {result.combinations[-1][0].definition}")
     except Exception as e:
-        print(f"Error deconstructing word: {e}") 
+        print(f"Error deconstructing word: {e}")
