@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "griptape[drivers-prompt-google]>=1.4.3",
+  "griptape[drivers-observability-opentelemetry,drivers-prompt-google]>=1.4.3",
   "python-dotenv>=1.0.1",
 ]
 
