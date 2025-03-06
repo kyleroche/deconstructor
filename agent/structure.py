@@ -5,7 +5,6 @@ Core libraries for CLI, environment, and data handling
 Griptape framework components for AI agent functionality
 """
 
-from rich.pretty import pprint
 import argparse
 import json
 from typing import List
@@ -126,7 +125,7 @@ if __name__ == "__main__":
         try:
             result = deconstruct_word(agent, args.word)
             if args.verbose:
-                pprint(result)
+                print(json.dumps(result.model_dump(), indent=2))
             else:
                 # Handle result as dict now
                 parts = ", ".join(f"{p.text} ({p.meaning})" for p in result.parts)
