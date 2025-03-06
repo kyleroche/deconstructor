@@ -11,7 +11,7 @@ from typing import List
 from griptape.utils import GriptapeCloudStructure
 from pydantic import BaseModel, Field
 from griptape.structures import Agent
-from griptape.drivers import GriptapeCloudRulesetDriver
+from griptape.drivers.ruleset.griptape_cloud import GriptapeCloudRulesetDriver
 from griptape.rules import Ruleset
 # endregion
 
