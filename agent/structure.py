@@ -5,25 +5,15 @@ Core libraries for CLI, environment, and data handling
 Griptape framework components for AI agent functionality
 """
 
+from rich.pretty import pprint
 import argparse
-import os
 import json
 from typing import List
+from griptape.utils import GriptapeCloudStructure
 from pydantic import BaseModel, Field
-from dotenv import load_dotenv
 from griptape.structures import Agent
 from griptape.drivers import GriptapeCloudRulesetDriver
 from griptape.rules import Ruleset
-from griptape.drivers.event_listener.griptape_cloud import (
-    GriptapeCloudEventListenerDriver,
-)
-from griptape.events import (
-    EventBus,
-    EventListener,
-    FinishStructureRunEvent,
-    FinishTaskEvent,
-    BaseEvent,
-)
 # endregion
 
 # region Data Model
@@ -72,48 +62,6 @@ If this is running in Griptape Cloud, we will publish events to the event bus
 """
 
 
-def is_running_in_managed_environment() -> bool:
-    return "GT_CLOUD_STRUCTURE_RUN_ID" in os.environ
-
-
-def get_listener_api_key() -> str:
-    api_key = os.environ.get("GT_CLOUD_API_KEY", "")
-    if is_running_in_managed_environment() and not api_key:
-        pass
-    return api_key
-
-
-def setup_config():
-    if is_running_in_managed_environment():
-
-        def event_handler(event: BaseEvent):
-            if isinstance(event, FinishStructureRunEvent):
-                if event.output_task_output is not None and isinstance(
-                    event.output_task_output.value, BaseModel
-                ):
-                    event.output_task_output.value = (
-                        event.output_task_output.value.model_dump()
-                    )
-            if isinstance(event, FinishTaskEvent):
-                if event.task_output is not None and isinstance(
-                    event.task_output.value, BaseModel
-                ):
-                    event.task_output.value = event.task_output.value.model_dump()
-
-            return event
-
-        event_driver = GriptapeCloudEventListenerDriver(api_key=get_listener_api_key())
-
-        event_listener = EventListener(
-            on_event=event_handler,
-            event_listener_driver=event_driver,
-        )
-
-        EventBus.add_event_listener(event_listener)
-    else:
-        load_dotenv("../.env.local")
-
-
 # endregion
 
 # region Agent Configuration
@@ -125,12 +73,10 @@ Rules are loaded from Griptape Cloud.
 
 
 def create_word_agent() -> Agent:
-    setup_config()
     ruleset = Ruleset(
         name="Etymology Ruleset",
         ruleset_driver=GriptapeCloudRulesetDriver(
-            ruleset_id="f887ffcf-7729-4a10-a685-ba3c3d78b5ef",
-            api_key=os.environ.get("GT_CLOUD_API_KEY", ""),
+            ruleset_id="f887ffcf-7729-4a10-a685-ba3c3d78b5ef"
         ),
     )
 
@@ -146,7 +92,9 @@ Handles prompt construction and result parsing
 """
 
 
-def deconstruct_word(agent: Agent, word: str, previous_attempts: list = None) -> dict:
+def deconstruct_word(
+    agent: Agent, word: str, previous_attempts: list | None = None
+) -> WordOutput:
     prompt = f"""Your task is to deconstruct this EXACT word: '{word}'
 Do not analyze any other word. Focus only on '{word}'.
 Break down '{word}' into its etymological components."""
@@ -154,16 +102,11 @@ Break down '{word}' into its etymological components."""
     if previous_attempts:
         prompt += f"\n\nPrevious attempts:\n{json.dumps(previous_attempts, indent=2)}\n\nPlease fix all the issues and try again."
 
-    response = agent.run(prompt)
-    try:
-        output = response.output.value
-
-        if isinstance(output, WordOutput):
-            result = output.model_dump()
-            return result
-        return output
-    except Exception as e:
-        raise ValueError(f"Failed to parse agent response: {e}")
+    agent.run(prompt)
+    if isinstance(agent.output.value, WordOutput):
+        return agent.output.value
+    else:
+        raise ValueError("Agent output is not a WordOutput")
 
 
 # endregion
@@ -185,18 +128,18 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    setup_config()
-    agent = create_word_agent()
+    with GriptapeCloudStructure(observe=True):
+        agent = create_word_agent()
 
-    try:
-        result = deconstruct_word(agent, args.word)
-        if args.verbose:
-            print(json.dumps(result, indent=2))
-        else:
-            # Handle result as dict now
-            parts = ", ".join(f"{p['text']} ({p['meaning']})" for p in result["parts"])
-            print(f"Word: {args.word}")
-            print(f"Parts: {parts}")
-            print(f"Definition: {result['combinations'][-1][0]['definition']}")
-    except Exception as e:
-        print(f"Error deconstructing word: {e}")
+        try:
+            result = deconstruct_word(agent, args.word)
+            if args.verbose:
+                pprint(result)
+            else:
+                # Handle result as dict now
+                parts = ", ".join(f"{p.text} ({p.meaning})" for p in result.parts)
+                print(f"Word: {args.word}")
+                print(f"Parts: {parts}")
+                print(f"Definition: {result.combinations[-1][0].definition}")
+        except Exception as e:
+            print(f"Error deconstructing word: {e}")
